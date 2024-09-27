@@ -1,0 +1,52 @@
+.login-div {
+    background-color: #dfbdbd;
+    padding: 40px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    display: flex;
+    width: 400px;
+    height: 400px;
+    flex-direction: column;
+    justify-content: space-around;
+    align-items: center;
+  }
+  
+  .btn-google{
+    padding: 10px 20px;
+    height: 35px;
+    font-size: 16px;
+    cursor: pointer;
+    background-color: #0f11b5;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+  }
+
+
+  .div-ingreso{
+    width: 100%;
+    display: flex;
+    align-items: center;    
+    justify-content: space-around;
+  }
+
+  .btn {
+    padding: 10px 20px;
+    height: 35px;
+    font-size: 16px;
+    cursor: pointer;
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+  }
+  
+  .btn:hover {
+    background-color: #45a049;
+  }
+
+  .btn-google:hover {
+    background-color: #06088a;
+  }
