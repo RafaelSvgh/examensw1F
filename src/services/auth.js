@@ -1,4 +1,4 @@
-const API_URL = `${process.env.REACT_APP_SERVER_URL}api/login/`;
+const API_URL = `https://examensw1b-production.up.railway.app/api/login/`;
 
 export const login = async (email, password) => {
   const loginData = {

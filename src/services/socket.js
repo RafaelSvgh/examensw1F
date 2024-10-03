@@ -1,5 +1,5 @@
 import { io } from 'socket.io-client';
-const server = process.env.REACT_APP_SERVER_URL;
+const server = 'https://examensw1b-production.up.railway.app/';
 const socket = io(server); 
 
 export default socket;

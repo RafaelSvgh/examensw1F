@@ -1,4 +1,4 @@
-const API_URL = `${process.env.REACT_APP_SERVER_URL}api/`;
+const API_URL = `https://examensw1b-production.up.railway.app/api/`;
 
 export const actualizarRol = async (token, rol, id) => {
   const response = await fetch(`${API_URL}usuario/actualizar-rol`, {
