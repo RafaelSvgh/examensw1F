@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import * as go from "gojs";
 import socket from "../../services/socket";
@@ -16,8 +16,17 @@ const Room = () => {
   const [selectedLink, setSelectedLink] = useState(null);
   const [selectedLinkType, setSelectedLinkType] = useState("");
   const [selectedNode, setSelectedNode] = useState(null);
-  const user = JSON.parse(localStorage.getItem("userData"));
-  const sala = JSON.parse(localStorage.getItem("sala"));
+  
+  // Usar useMemo para estabilizar las referencias de localStorage
+  const user = useMemo(() => {
+    const userData = localStorage.getItem("userData");
+    return userData ? JSON.parse(userData) : null;
+  }, []);
+  
+  const sala = useMemo(() => {
+    const salaData = localStorage.getItem("sala");
+    return salaData ? JSON.parse(salaData) : null;
+  }, []);
   useEffect(() => {
     if (!diagramRef.current || !paletteRef.current) return;
     diagram.current = new go.Diagram("diagrama", {
@@ -250,7 +259,9 @@ const Room = () => {
       }
     });
 
-    socket.emit("reconectar-a-sala", sala.id);
+    if (sala?.id) {
+      socket.emit("reconectar-a-sala", sala.id);
+    }
     // socket.emit("reconectar-a-sala", sala.id);
     // socket.on("cargar-diagrama", (payload) => {
     //   diagram.current.model = go.Model.fromJson(payload);
@@ -626,7 +637,7 @@ const Room = () => {
     });
 
     if (user && user.rol === "admin") {
-      if (sala.diagrama) {
+      if (sala?.diagrama) {
         diagram.current.model = go.Model.fromJson(sala.diagrama);
       }
     }
@@ -647,7 +658,7 @@ const Room = () => {
       socket.off("enlace-eliminado");
       socket.off("actualizar-multiplicidad");
     };
-  }, [roomCode]);
+  }, [roomCode, user, sala]);
   const handleAddRecursiveLink = () => {
     if (selectedNode) {
       diagram.current.startTransaction("addRecursiveLink");
@@ -792,19 +803,6 @@ const Room = () => {
       a.download = "diagrama.json"; // Nombre del archivo a descargar
       a.click();
       URL.revokeObjectURL(url);
-    }
-  };
-
-  // Función para importar JSON y cargar el diagrama
-  const importFromJson = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const jsonData = e.target.result;
-        diagram.current.model = go.Model.fromJson(jsonData);
-      };
-      reader.readAsText(file);
     }
   };
 

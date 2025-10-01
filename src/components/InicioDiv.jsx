@@ -6,7 +6,6 @@ import {
   agregarColaborador,
   buscarSala,
   crearSala,
-  obtenerDiagramas,
 } from "../services/sala";
 import { actualizarRol } from "../services/user";
 import {
@@ -23,13 +22,11 @@ import {
   getAuthToken,
   setLocalStorageItem,
   clearAuthData,
-  isAuthenticated,
 } from "../utils/localStorage";
 
 function DivInicio() {
-  const [roomCode] = useState("");
   const navigate = useNavigate();
-  const [diagramas, setDiagramas] = useState([]);
+  const [diagramas] = useState([]);
   const [error, setError] = useState("");
   const [userData, setUserData] = useState(getUserData());
   const [socketConnected, setSocketConnected] = useState(socket.connected);
@@ -48,8 +45,7 @@ function DivInicio() {
     setUserData(userInfo);
 
     const fetchDiagramas = async () => {
-      const userId = getUserId();
-      const token = getAuthToken();
+      
       // try {
       //   const diagramasObtenidos = await obtenerDiagramas(userId, token);
       //   setDiagramas(diagramasObtenidos);
