@@ -1,4 +1,6 @@
-const API_URL = `https://examensw1b-production.up.railway.app/api/`;
+import config from '../config';
+
+const API_URL = `${config.api.baseUrl}/`;
 
 export const actualizarRol = async (token, rol, id) => {
   const response = await fetch(`${API_URL}usuario/actualizar-rol`, {

@@ -20,8 +20,9 @@ function Login() {
     try {
       const data = await login(email, password);
       localStorage.setItem("authToken", data.token);
-      localStorage.setItem("userData", JSON.stringify(data.usuario));
-      navigate(`/inicio`);
+      console.log(data.user);
+      localStorage.setItem("userData", JSON.stringify(data.user));
+      navigate(`/main`);
     } catch (error) {
       console.error("Error en el login:", error.message);
       alert("Credenciales inválidas");
@@ -54,9 +55,9 @@ function Login() {
             <FaLock className="icon" />
           </div>
           <button type="submit">Login</button>
-          <div className="register-link">
+          <div className="register-link"> 
             <p>
-              No tienes una cuenta? <Link to="/registro">Regístrate</Link>
+              No tienes una cuenta? <Link to="/register">Regístrate</Link>
             </p>
           </div>
         </form>

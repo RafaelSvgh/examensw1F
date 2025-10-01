@@ -1,4 +1,6 @@
-const API_URL = `https://examensw1b-production.up.railway.app/api/`;
+import config from '../config';
+
+const API_URL = `${config.api.baseUrl}/`;
 
 export const obtenerDiagramas = async (userId, token) => {
   const response = await fetch(`${API_URL}sala/admin/${userId}`, {
@@ -16,7 +18,7 @@ export const obtenerDiagramas = async (userId, token) => {
 };
 
 export const buscarSala = async (id, token) => {
-  const response = await fetch(`${API_URL}sala/buscar/${id}`, {
+  const response = await fetch(`${API_URL}room/${id}`, {
     method: "GET",
     headers: {
       "x-token": token,
@@ -27,17 +29,17 @@ export const buscarSala = async (id, token) => {
   }
 
   const data = await response.json();
-  return data.sala;
+  return data;
 };
 
-export const crearSala = async (token, nombre) => {
-  const response = await fetch(`${API_URL}sala/crear`, {
+export const crearSala = async (token, nombre, adminId) => {
+  const response = await fetch(`${API_URL}room`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json", // Asegurarse de que el tipo de contenido sea JSON
       "x-token": token,
     },
-    body: JSON.stringify({ nombre: nombre }), // Convertir el cuerpo a JSON
+    body: JSON.stringify({ name: nombre, adminId: adminId }), // Convertir el cuerpo a JSON
   });
 
   if (!response.ok) {
@@ -45,17 +47,17 @@ export const crearSala = async (token, nombre) => {
   }
 
   const data = await response.json();
-  return data.sala;
+  return data;
 };
 
 export const agregarColaborador = async (token, idDiag, id) => {
-  const response = await fetch(`${API_URL}sala/agregar-colaborador`, {
+  const response = await fetch(`${API_URL}room/join`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json", // Asegurarse de que el tipo de contenido sea JSON
       "x-token": token,
     },
-    body: JSON.stringify({ diagramaId: idDiag, colaboradorId: id }), // Convertir el cuerpo a JSON
+    body: JSON.stringify({ id: idDiag, userId: id }), // Convertir el cuerpo a JSON
   });
 
   if (!response.ok) {

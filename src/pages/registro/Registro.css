@@ -1,88 +1,334 @@
-.container-principal{
-    /* margin: 0;
-    padding: 0;
-    box-sizing: border-box; */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+.container-principal {
     display: flex;
     justify-content: center;
     align-items: center;
     width: 100%;
     min-height: 100vh;
-    background-color: teal;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    font-family: 'Inter', sans-serif;
+    padding: 20px;
+    box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
 }
 
-.wrapper{
-    width: 420px;
-    background-color: cadetblue;
-    color: white;
-    border-radius: 10px;
-    padding: 20px 20px;
+/* Elementos flotantes de fondo */
+.container-principal::before {
+    content: '';
+    position: absolute;
+    top: 15%;
+    left: 15%;
+    width: 80px;
+    height: 80px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    animation: float1 7s ease-in-out infinite;
 }
 
-.wrapper h1{
+.container-principal::after {
+    content: '';
+    position: absolute;
+    bottom: 15%;
+    right: 15%;
+    width: 120px;
+    height: 120px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 50%;
+    animation: float2 9s ease-in-out infinite;
+}
+
+@keyframes float1 {
+    0%, 100% { transform: translateY(0px) translateX(0px); }
+    50% { transform: translateY(-15px) translateX(8px); }
+}
+
+@keyframes float2 {
+    0%, 100% { transform: translateY(0px) translateX(0px); }
+    50% { transform: translateY(15px) translateX(-12px); }
+}
+
+.wrapper {
+    width: 100%;
+    max-width: 450px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 24px;
+    padding: 50px 40px;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s ease;
+    position: relative;
+    z-index: 10;
+    animation: slideInScale 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideInScale {
+    from {
+        opacity: 0;
+        transform: translateY(50px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.wrapper:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 35px 70px rgba(0, 0, 0, 0.2);
+}
+
+/* Logo/Icono de la aplicación */
+.wrapper::before {
+    content: '👤';
+    position: absolute;
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 60px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    animation: iconBounce 2s ease-in-out infinite;
+}
+
+@keyframes iconBounce {
+    0%, 100% { transform: translateX(-50%) translateY(0px); }
+    50% { transform: translateX(-50%) translateY(-5px); }
+}
+
+.wrapper h1 {
     font-size: 36px;
+    font-weight: 700;
     text-align: center;
+    color: #2d3748;
+    margin: 40px 0 40px 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: fadeInDown 1s ease-out 0.2s both;
+}
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .wrapper .input-box {
     position: relative;
-    width: 97%;
-    height: 50px;
-    margin: 30px 0;
+    width: 100%;
+    margin: 25px 0;
+    animation: slideInLeft 0.8s ease-out both;
 }
 
-.input-box input{
-    width: 90%;
-    height: 100%;
-    background: transparent;
-    border: none;
-    outline: none;
-    border: 2px solid rgba(255, 255, 255, .2);
-    border-radius: 40px;
+.wrapper .input-box:nth-child(3) {
+    animation-delay: 0.2s;
+}
+
+.wrapper .input-box:nth-child(4) {
+    animation-delay: 0.3s;
+}
+
+.wrapper .input-box:nth-child(5) {
+    animation-delay: 0.4s;
+}
+
+.wrapper .input-box:nth-child(6) {
+    animation-delay: 0.5s;
+}
+
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.input-box input {
+    width: 100%;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.8);
+    border: 2px solid rgba(102, 126, 234, 0.2);
+    border-radius: 16px;
     font-size: 16px;
-    color: white;
-    padding-left: 20px;
-    padding-right: 20px;
+    color: #2d3748;
+    padding: 0 20px 0 60px;
+    box-sizing: border-box;
+    transition: all 0.3s ease;
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
 }
 
-.input-box input::placeholder{
-    color: white;
-
+.input-box input:focus {
+    outline: none;
+    border-color: #667eea;
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+    transform: translateY(-3px);
 }
 
-.input-box .icon{
+.input-box input::placeholder {
+    color: #a0aec0;
+    font-weight: 400;
+}
+
+.input-box .icon {
     position: absolute;
-    right: 20px;
+    left: 20px;
     top: 50%;
     transform: translateY(-50%);
-    font-size: 16px;
-}
-
-.wrapper button{
-    width: 100%;
-    height: 45px;
-    background-color: white;
-    border: none;
-    outline: none;
-    border-radius: 40px;
-    box-shadow: 0 0 10px rgba(255, 255, 255, .1);
-    cursor: pointer;
     font-size: 20px;
-    color: #333;
-    font-weight: 700;
+    color: #667eea;
+    transition: all 0.3s ease;
 }
 
-.wrapper .register-link{
+.input-box input:focus ~ .icon {
+    color: #5a67d8;
+    transform: translateY(-50%) scale(1.1);
+}
+
+.error-message {
+    background: rgba(254, 226, 226, 0.9);
+    border: 1px solid #fca5a5;
+    border-radius: 12px;
+    padding: 15px 20px;
+    margin: 20px 0;
+    animation: slideInError 0.5s ease-out;
+}
+
+@keyframes slideInError {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.error-message p {
+    color: #dc2626;
     font-size: 14px;
+    font-weight: 500;
+    margin: 0;
     text-align: center;
-    margin-top: 20px;
 }
 
-.register-link p a{
+.wrapper button {
+    width: 100%;
+    height: 60px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    border-radius: 16px;
+    cursor: pointer;
+    font-size: 18px;
     color: white;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.3s ease;
+    margin-top: 20px;
+    box-shadow: 0 15px 35px rgba(102, 126, 234, 0.3);
+    position: relative;
+    overflow: hidden;
+    animation: slideInUp 0.8s ease-out 0.6s both;
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.wrapper button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.wrapper button:hover::before {
+    left: 100%;
+}
+
+.wrapper button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 20px 40px rgba(102, 126, 234, 0.4);
+    background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+}
+
+.wrapper button:active {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+}
+
+.wrapper .register-link {
+    font-size: 15px;
+    text-align: center;
+    margin-top: 30px;
+    color: #718096;
+    animation: fadeIn 1s ease-out 0.7s both;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.register-link p {
+    margin: 0;
+}
+
+.register-link p a {
+    color: #667eea;
     text-decoration: none;
     font-weight: 600;
+    transition: all 0.3s ease;
+    position: relative;
 }
 
-.register-link p a:hover{
-    text-decoration: underline;
+.register-link p a::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    transition: width 0.3s ease;
+}
+
+.register-link p a:hover::after {
+    width: 100%;
+}
+
+.register-link p a:hover {
+    color: #5a67d8;
 }

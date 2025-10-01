@@ -26,9 +26,9 @@ function Registro() {
       const data = await register(email, username, password);
 
       localStorage.setItem("authToken", data.token);
-      localStorage.setItem("userData", JSON.stringify(data.usuario));
+      localStorage.setItem("userData", JSON.stringify(data.user));
 
-      navigate(`/inicio`);
+      navigate(`/main`);
     } catch (error) {
       console.error("Error en el registro:", error.message);
     }
@@ -79,11 +79,15 @@ function Registro() {
             />
             <FaLock className="icon" />
           </div>
-          {error && <p style={{ color: "red" }}>{error}</p>}
+          {error && (
+            <div className="error-message">
+              <p>{error}</p>
+            </div>
+          )}
           <button type="submit">Registro</button>
           <div className="register-link">
             <p>
-              Ya tienes una cuenta? <Link to="/">Ingresa</Link>
+              Ya tienes una cuenta? <Link to="/login">Ingresa</Link>
             </p>
           </div>
         </form>

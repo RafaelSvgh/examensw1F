@@ -10,8 +10,9 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<Login />} />
-        <Route path="/registro" element={<Registro />} />
-        <Route path="/inicio" element={<Inicio />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Registro />} />
+        <Route path="/main" element={<Inicio />} />
         <Route path="/room/:roomCode" element={<Room />} />
       </Routes>
     </Router>

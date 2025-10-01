@@ -95,6 +95,12 @@ const Room = () => {
         reshapable: true,
         routing: go.Routing.Normal,
         corner: 5,
+        // selectionAdorned: true,
+        // layerName: "Background",
+        // reshapable: true,
+        // routing: go.Routing.AvoidsNodes,
+        // corner: 5,
+        // curve: go.Curve.JumpOver,
       }).add(
         new go.Shape({
           stroke: "#000000",
@@ -213,7 +219,13 @@ const Room = () => {
     const palette = new go.Palette(paletteRef.current, {
       nodeTemplate: diagram.current.nodeTemplate,
       model: new go.GraphLinksModel([
-        { key: uuid(), name: "Clase", attribute: "-atributo:tipo" },
+        {
+          key: uuid(),
+          name: "Clase",
+          attribute: "atributo1: tipo\natributo2: tipo",
+          loc: "0 0",
+          nodeType: "standard",
+        },
       ]),
     });
     let isSocketUpdate = false;
@@ -405,7 +417,7 @@ const Room = () => {
         diagram.current.commitTransaction("Agregar nuevo nodo");
       }
       const json = diagram.current.model.toJson();
-      socket.emit('enviar-diagrama', {room:roomCode, diagrama:json});
+      socket.emit("enviar-diagrama", { room: roomCode, diagrama: json });
       isSocketUpdate = false;
     });
 
@@ -418,7 +430,7 @@ const Room = () => {
         diagram.current.commitTransaction("Actualizar Título Nodo");
       }
       const json = diagram.current.model.toJson();
-      socket.emit('enviar-diagrama', {room:roomCode, diagrama:json});
+      socket.emit("enviar-diagrama", { room: roomCode, diagrama: json });
       isSocketUpdate = false;
     });
 
@@ -435,7 +447,7 @@ const Room = () => {
         diagram.current.commitTransaction("Actualizar Atributo Nodo");
       }
       const json = diagram.current.model.toJson();
-      socket.emit('enviar-diagrama', {room:roomCode, diagrama:json});
+      socket.emit("enviar-diagrama", { room: roomCode, diagrama: json });
       isSocketUpdate = false;
     });
 
@@ -448,7 +460,7 @@ const Room = () => {
         diagram.current.model.commitTransaction("Mover nodo");
       }
       const json = diagram.current.model.toJson();
-      socket.emit('enviar-diagrama', {room:roomCode, diagrama:json});
+      socket.emit("enviar-diagrama", { room: roomCode, diagrama: json });
       isSocketUpdate = false;
     });
 
@@ -472,7 +484,7 @@ const Room = () => {
       }
       diagram.current.model.commitTransaction("Agregar enlace");
       const json = diagram.current.model.toJson();
-      socket.emit('enviar-diagrama', {room:roomCode, diagrama:json});
+      socket.emit("enviar-diagrama", { room: roomCode, diagrama: json });
       isSocketUpdate = false;
     });
 
@@ -490,7 +502,7 @@ const Room = () => {
       }
       diagram.current.commitTransaction("updateLink");
       const json = diagram.current.model.toJson();
-      socket.emit('enviar-diagrama', {room:roomCode, diagrama:json});
+      socket.emit("enviar-diagrama", { room: roomCode, diagrama: json });
       isSocketUpdate = false;
     });
 
@@ -533,7 +545,7 @@ const Room = () => {
       diagram.current.model.removeLinkData(link);
       diagram.current.commitTransaction("Agregar relacion muchos a muchos");
       const json = diagram.current.model.toJson();
-      socket.emit('enviar-diagrama', {room:roomCode, diagrama:json});
+      socket.emit("enviar-diagrama", { room: roomCode, diagrama: json });
       isSocketUpdate = false;
     });
 
@@ -555,7 +567,7 @@ const Room = () => {
       }
       diagram.current.commitTransaction("addRecursiveLink");
       const json = diagram.current.model.toJson();
-      socket.emit('enviar-diagrama', {room:roomCode, diagrama:json});
+      socket.emit("enviar-diagrama", { room: roomCode, diagrama: json });
       isSocketUpdate = false;
     });
 
@@ -567,7 +579,7 @@ const Room = () => {
         diagram.current.model.removeNodeData(node);
       }
       const json = diagram.current.model.toJson();
-      socket.emit('enviar-diagrama', {room:roomCode, diagrama:json});
+      socket.emit("enviar-diagrama", { room: roomCode, diagrama: json });
       isSocketUpdate = false;
     });
 
@@ -581,7 +593,7 @@ const Room = () => {
         diagram.current.model.removeLinkData(link);
       }
       const json = diagram.current.model.toJson();
-      socket.emit('enviar-diagrama', {room:roomCode, diagrama:json});
+      socket.emit("enviar-diagrama", { room: roomCode, diagrama: json });
       isSocketUpdate = false;
     });
 
@@ -609,7 +621,7 @@ const Room = () => {
         diagram.current.model.commitTransaction("Actualizar multiplicidad");
       }
       const json = diagram.current.model.toJson();
-      socket.emit('enviar-diagrama', {room:roomCode, diagrama:json});
+      socket.emit("enviar-diagrama", { room: roomCode, diagrama: json });
       isSocketUpdate = false;
     });
 
@@ -722,7 +734,7 @@ const Room = () => {
       const salaAct = await actualizarSala(token, roomCode, diagramaJson);
       localStorage.setItem("sala", JSON.stringify(salaAct));
       const salaJson = JSON.stringify(salaAct.diagrama);
-      socket.emit('enviar-diagrama',{room:roomCode, diagrama:salaJson });
+      socket.emit("enviar-diagrama", { room: roomCode, diagrama: salaJson });
       console.log("Diagrama guardado con éxito", salaJson);
     } catch (error) {
       console.error("Error al guardar el diagrama:", error);
