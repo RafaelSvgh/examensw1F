@@ -1,4 +1,4 @@
-import config from '../config';
+import config from "../config";
 
 const API_URL = `${config.api.baseUrl}/`;
 
@@ -92,4 +92,51 @@ export const actualizarSala = async (token, salaId, diagramaJson) => {
   }
 };
 
+export const downloadZip = async (token, modelo) => {
+  try {
+    const transformedModel = {
+      class: "GraphLinksModel",
+      nodeDataArray: modelo.nodeDataArray || [],
+      linkDataArray: modelo.linkDataArray || []
+    };
 
+    console.log("Modelo original:", modelo);
+    console.log("Modelo transformado:", transformedModel);
+
+    const response = await fetch(`${API_URL}room/downloadZip`, {
+      method: "POST",
+      headers: {
+        "x-token": token,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(transformedModel),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || "Error al descargar el archivo ZIP");
+    }
+
+    // Obtener el blob del archivo ZIP
+    const blob = await response.blob();
+
+    // Crear un URL temporal para el blob
+    const url = window.URL.createObjectURL(blob);
+
+    // Crear un elemento <a> temporal para iniciar la descarga
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "back_examen.zip";
+    document.body.appendChild(a);
+    a.click();
+
+    // Limpiar
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+
+    return { success: true, message: "Descarga iniciada correctamente" };
+  } catch (error) {
+    console.error("Error al descargar el ZIP:", error);
+    throw error;
+  }
+};

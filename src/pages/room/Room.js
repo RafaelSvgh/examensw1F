@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import * as go from "gojs";
 import socket from "../../services/socket";
 import "./Room.css";
-import { actualizarSala } from "../../services/sala";
+import { actualizarSala, downloadZip } from "../../services/sala";
 
 const { v4: uuid } = require("uuid");
 
@@ -16,13 +16,13 @@ const Room = () => {
   const [selectedLink, setSelectedLink] = useState(null);
   const [selectedLinkType, setSelectedLinkType] = useState("");
   const [selectedNode, setSelectedNode] = useState(null);
-  
+
   // Usar useMemo para estabilizar las referencias de localStorage
   const user = useMemo(() => {
     const userData = localStorage.getItem("userData");
     return userData ? JSON.parse(userData) : null;
   }, []);
-  
+
   const sala = useMemo(() => {
     const salaData = localStorage.getItem("sala");
     return salaData ? JSON.parse(salaData) : null;
@@ -92,7 +92,29 @@ const Room = () => {
             editable: true,
             wrap: go.TextBlock.WrapFit,
             margin: new go.Margin(5, 5, 5, 5),
-          }).bindTwoWay("text", "attribute")
+          }).bindTwoWay("text", "attribute"),
+
+          new go.Shape("LineH", {
+            row: 3,
+            column: 0,
+            columnSpan: 2,
+            stroke: "black",
+            strokeWidth: 1,
+            height: 1,
+            stretch: go.GraphObject.Horizontal,
+            margin: new go.Margin(5, 0, 5, 0),
+          }),
+
+          new go.TextBlock({
+            row: 4,
+            column: 0,
+            columnSpan: 2,
+            font: "italic 11pt sans-serif",
+            isMultiline: true,
+            editable: true,
+            wrap: go.TextBlock.WrapFit,
+            margin: new go.Margin(5, 5, 5, 5),
+          }).bindTwoWay("text", "methods")
         )
       );
 
@@ -232,6 +254,7 @@ const Room = () => {
           key: uuid(),
           name: "Clase",
           attribute: "atributo1: tipo\natributo2: tipo",
+          methods: "metodo1(): tipo\nmetodo2(): tipo",
           loc: "0 0",
           nodeType: "standard",
         },
@@ -243,8 +266,8 @@ const Room = () => {
       if (isSocketUpdate) return;
       const link = e.subject;
       const model = diagram.current.model;
-      model.setDataProperty(link.data, "fromMultiplicity", "1");
-      model.setDataProperty(link.data, "toMultiplicity", "*");
+      model.setDataProperty(link.data, "fromMultiplicity", "*");
+      model.setDataProperty(link.data, "toMultiplicity", "1");
       setSelectedLink(link);
     });
 
@@ -738,17 +761,24 @@ const Room = () => {
   };
 
   const handleGuardarDiagrama = async () => {
-    if (user.rol !== "admin") return;
-    const diagramaJson = diagram.current.model.toJson();
-    const token = localStorage.getItem("authToken");
     try {
-      const salaAct = await actualizarSala(token, roomCode, diagramaJson);
-      localStorage.setItem("sala", JSON.stringify(salaAct));
-      const salaJson = JSON.stringify(salaAct.diagrama);
-      socket.emit("enviar-diagrama", { room: roomCode, diagrama: salaJson });
-      console.log("Diagrama guardado con éxito", salaJson);
+      const token = localStorage.getItem("authToken");
+
+      if (!token) {
+        console.error("No se encontró el token de autenticación");
+        alert("Por favor, inicia sesión nuevamente");
+        return;
+      }
+
+      // Llamar al servicio de descarga del ZIP
+      const json = diagram.current.model;
+      console.log(json);
+      await downloadZip(token, json);
+
+      console.log("Descarga del ZIP iniciada correctamente");
     } catch (error) {
-      console.error("Error al guardar el diagrama:", error);
+      console.error("Error al descargar el diagrama:", error);
+      alert(`Error al descargar el archivo: ${error.message}`);
     }
   };
 
