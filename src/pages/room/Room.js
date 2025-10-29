@@ -3,7 +3,14 @@ import { useParams } from "react-router-dom";
 import * as go from "gojs";
 import socket from "../../services/socket";
 import "./Room.css";
-import { actualizarSala, downloadZip } from "../../services/sala";
+import {
+  actualizarSala,
+  downloadZip,
+  downloadFlutterProject,
+} from "../../services/sala";
+import { askQuestion, uploadImage, fixMultiplicity } from "../../services/ia";
+import Swal from "sweetalert2";
+import Loading from "../../components/Loading";
 
 const { v4: uuid } = require("uuid");
 
@@ -16,6 +23,19 @@ const Room = () => {
   const [selectedLink, setSelectedLink] = useState(null);
   const [selectedLinkType, setSelectedLinkType] = useState("");
   const [selectedNode, setSelectedNode] = useState(null);
+  const [showJsonModal, setShowJsonModal] = useState(false);
+  const [jsonInput, setJsonInput] = useState("");
+
+  // Estados para el panel flotante de IA
+  const [showIAPanel, setShowIAPanel] = useState(false);
+  const [iaQuestion, setIaQuestion] = useState("");
+  const [iaResponse, setIaResponse] = useState("");
+  const [isListening, setIsListening] = useState(false);
+  const [selectedImageFile, setSelectedImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("Procesando...");
+  const recognitionRef = useRef(null);
 
   // Usar useMemo para estabilizar las referencias de localStorage
   const user = useMemo(() => {
@@ -181,8 +201,18 @@ const Room = () => {
           segmentIndex: 0,
           segmentOffset: new go.Point(20, NaN),
           segmentOrientation: go.Orientation.Upright,
-          editable: true,
-        }).bindTwoWay("text", "fromMultiplicity")
+          editable: false,
+        }).bindTwoWay("text", "fromMultiplicity"),
+        new go.TextBlock({
+          text: "1",
+          textAlign: "center",
+          font: "bold 16px sans-serif",
+          stroke: "black",
+          segmentIndex: -1,
+          segmentOffset: new go.Point(-20, NaN),
+          segmentOrientation: go.Orientation.Upright,
+          editable: false,
+        }).bindTwoWay("text", "toMultiplicity")
       )
     );
 
@@ -449,6 +479,17 @@ const Room = () => {
         diagram.current.startTransaction("Agregar nuevo nodo");
         diagram.current.model.addNodeData(payload);
         diagram.current.commitTransaction("Agregar nuevo nodo");
+      }
+      const json = diagram.current.model.toJson();
+      socket.emit("enviar-diagrama", { room: roomCode, diagrama: json });
+      console.log("nodo enviado");
+      isSocketUpdate = false;
+    });
+
+    socket.on("recargar-todo-cliente", (payload) => {
+      isSocketUpdate = true;
+      if (diagram.current) {
+        diagram.current.model = go.Model.fromJson(payload);
       }
       const json = diagram.current.model.toJson();
       socket.emit("enviar-diagrama", { room: roomCode, diagrama: json });
@@ -757,7 +798,7 @@ const Room = () => {
   };
 
   const generateUniqueKey = () => {
-    return Math.floor(Date.now() + Math.random() * 10000);
+    return -Math.floor(Math.random() * 90000 + 1000);
   };
 
   const handleGuardarDiagrama = async () => {
@@ -765,20 +806,123 @@ const Room = () => {
       const token = localStorage.getItem("authToken");
 
       if (!token) {
-        console.error("No se encontró el token de autenticación");
-        alert("Por favor, inicia sesión nuevamente");
+        await Swal.fire({
+          icon: "error",
+          title: "Sin autenticación",
+          text: "Por favor, inicia sesión nuevamente",
+          confirmButtonColor: "#7b2ff7",
+          background: "#1a1a2e",
+          color: "#fff",
+        });
         return;
       }
 
-      // Llamar al servicio de descarga del ZIP
-      const json = diagram.current.model;
-      console.log(json);
-      await downloadZip(token, json);
+      setIsLoading(true);
+      setLoadingMessage("Generando proyecto Spring Boot...");
+
+      // Obtener el JSON plano del modelo GoJS
+      const gojsJsonString = diagram.current.model.toJson();
+      const gojsObject = JSON.parse(gojsJsonString);
+
+      // Llamar al servicio de IA para corregir multiplicidades
+      console.log("Enviando diagrama a fixMultiplicity IA...");
+      const fixResponse = await fixMultiplicity(token, gojsObject);
+      await downloadZip(token, JSON.parse(fixResponse.correctedDiagram));
+
+      setIsLoading(false);
+
+      await Swal.fire({
+        icon: "success",
+        title: "¡Éxito!",
+        text: "Proyecto Spring Boot generado correctamente",
+        confirmButtonColor: "#00d4ff",
+        background: "#1a1a2e",
+        color: "#fff",
+        timer: 3000,
+        showConfirmButton: true,
+      });
 
       console.log("Descarga del ZIP iniciada correctamente");
     } catch (error) {
+      setIsLoading(false);
       console.error("Error al descargar el diagrama:", error);
-      alert(`Error al descargar el archivo: ${error.message}`);
+
+      await Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: `Error al descargar el archivo: ${error.message}`,
+        confirmButtonColor: "#f72585",
+        background: "#1a1a2e",
+        color: "#fff",
+      });
+    }
+  };
+
+  // Add a new function to handle Flutter project generation
+  const handleGenerarFlutter = async () => {
+    try {
+      const token = localStorage.getItem("authToken");
+
+      if (!token) {
+        await Swal.fire({
+          icon: "error",
+          title: "Sin autenticación",
+          text: "Por favor, inicia sesión nuevamente",
+          confirmButtonColor: "#7b2ff7",
+          background: "#1a1a2e",
+          color: "#fff",
+        });
+        return;
+      }
+
+      setIsLoading(true);
+      setLoadingMessage("Generando proyecto Flutter...");
+
+      // Obtener el JSON plano del modelo GoJS
+      const gojsJsonString = diagram.current.model.toJson();
+      const gojsObject = JSON.parse(gojsJsonString);
+
+      // Llamar al servicio de IA para corregir multiplicidades
+      console.log("Enviando diagrama a fixMultiplicity IA...");
+      const fixResponse = await fixMultiplicity(token, gojsObject);
+      console.log(fixResponse);
+      // // El backend devuelve un objeto que contiene correctedDiagram (según implementación del backend)
+      // const corrected = fixResponse && fixResponse.correctedDiagram ? fixResponse.correctedDiagram : fixResponse;
+
+      // // Asegurarse de que le pasamos un objeto con nodeDataArray/linkDataArray a downloadFlutterProject
+      // const modelToSend = corrected && corrected.nodeDataArray ? corrected : gojsObject;
+
+      await downloadFlutterProject(
+        token,
+        JSON.parse(fixResponse.correctedDiagram)
+      );
+
+      setIsLoading(false);
+
+      await Swal.fire({
+        icon: "success",
+        title: "¡Éxito!",
+        text: "Proyecto Flutter generado correctamente",
+        confirmButtonColor: "#00d4ff",
+        background: "#1a1a2e",
+        color: "#fff",
+        timer: 3000,
+        showConfirmButton: true,
+      });
+
+      console.log("Generación del proyecto Flutter iniciada correctamente");
+    } catch (error) {
+      setIsLoading(false);
+      console.error("Error al generar el proyecto Flutter:", error);
+
+      await Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: `Error al generar el proyecto Flutter: ${error.message}`,
+        confirmButtonColor: "#f72585",
+        background: "#1a1a2e",
+        color: "#fff",
+      });
     }
   };
 
@@ -801,12 +945,16 @@ const Room = () => {
       diagram.current.model.addLinkData({
         from: from,
         to: newNode.key,
+        fromMultiplicity: "*",
+        toMultiplicity: "1",
         category: "muchos-a-muchos", // Usa la categoría que prefieras
       });
 
       diagram.current.model.addLinkData({
         from: to,
         to: newNode.key,
+        fromMultiplicity: "*",
+        toMultiplicity: "1",
         category: "muchos-a-muchos", // Usa la categoría que prefieras
       });
 
@@ -836,13 +984,251 @@ const Room = () => {
     }
   };
 
+  // Función para cargar el diagrama desde un JSON
+  const handleLoadFromJson = () => {
+    try {
+      const parsedJson = JSON.parse(jsonInput);
+
+      if (diagram.current) {
+        diagram.current.model = go.Model.fromJson(parsedJson);
+
+        // Emitir el diagrama actualizado a todos los conectados
+        const json = diagram.current.model.toJson();
+        socket.emit("recargar-todo", { room: roomCode, diagrama: json });
+
+        alert("Diagrama cargado exitosamente");
+        setShowJsonModal(false);
+        setJsonInput("");
+      }
+    } catch (error) {
+      console.error("Error al cargar el JSON:", error);
+      alert(`Error al cargar el JSON: ${error.message}`);
+    }
+  };
+
+  // Funciones para el panel de IA
+  const handleAskQuestion = async () => {
+    const json = diagram.current.model.toJson();
+    const jsonString = JSON.stringify(json);
+    if (!iaQuestion.trim()) {
+      await Swal.fire({
+        icon: "warning",
+        title: "Atención",
+        text: "Escribe una pregunta antes de enviar",
+        confirmButtonColor: "#7b2ff7",
+        background: "#1a1a2e",
+        color: "#fff",
+      });
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("authToken");
+
+      if (!token) {
+        await Swal.fire({
+          icon: "error",
+          title: "Sin autenticación",
+          text: "Por favor, inicia sesión nuevamente",
+          confirmButtonColor: "#7b2ff7",
+          background: "#1a1a2e",
+          color: "#fff",
+        });
+        return;
+      }
+
+      setIsLoading(true);
+      setLoadingMessage("Procesando tu pregunta con IA...");
+
+      console.log("Enviando pregunta:", iaQuestion);
+      const response = await askQuestion(token, iaQuestion, jsonString);
+
+      const parsedJson = JSON.parse(response);
+
+      if (diagram.current) {
+        diagram.current.model = go.Model.fromJson(parsedJson);
+
+        // Emitir el diagrama actualizado a todos los conectados
+        const json2 = diagram.current.model.toJson();
+        socket.emit("recargar-todo", { room: roomCode, diagrama: json2 });
+      }
+
+      // Por ahora solo logueamos la respuesta
+      console.log("Respuesta de IA:", response);
+
+      setIaResponse(JSON.stringify(response, null, 2));
+      setIaQuestion("");
+      setIsLoading(false);
+
+      await Swal.fire({
+        icon: "success",
+        title: "¡Listo!",
+        text: "Tu pregunta fue procesada correctamente",
+        confirmButtonColor: "#00d4ff",
+        background: "#1a1a2e",
+        color: "#fff",
+        timer: 2500,
+        showConfirmButton: true,
+      });
+    } catch (error) {
+      setIsLoading(false);
+      console.error("Error al enviar pregunta:", error);
+
+      await Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: `Error al enviar pregunta: ${error.message}`,
+        confirmButtonColor: "#f72585",
+        background: "#1a1a2e",
+        color: "#fff",
+      });
+    }
+  };
+
+  const handleUploadImage = async () => {
+    if (!selectedImageFile) {
+      await Swal.fire({
+        icon: "warning",
+        title: "Atención",
+        text: "Selecciona una imagen antes de enviar",
+        confirmButtonColor: "#7b2ff7",
+        background: "#1a1a2e",
+        color: "#fff",
+      });
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("authToken");
+
+      if (!token) {
+        await Swal.fire({
+          icon: "error",
+          title: "Sin autenticación",
+          text: "Por favor, inicia sesión nuevamente",
+          confirmButtonColor: "#7b2ff7",
+          background: "#1a1a2e",
+          color: "#fff",
+        });
+        return;
+      }
+
+      setIsLoading(true);
+      setLoadingMessage("Analizando imagen con IA...");
+
+      console.log("Enviando imagen:", {
+        nombre: selectedImageFile.name,
+        tipo: selectedImageFile.type,
+        tamaño: selectedImageFile.size,
+      });
+
+      const response = await uploadImage(token, selectedImageFile);
+
+      const parsedJson = JSON.parse(response.imageAnalysis);
+
+      if (diagram.current) {
+        diagram.current.model = go.Model.fromJson(parsedJson);
+
+        // Emitir el diagrama actualizado a todos los conectados
+        const json2 = diagram.current.model.toJson();
+        socket.emit("recargar-todo", { room: roomCode, diagrama: json2 });
+      }
+
+      // Por ahora solo logueamos la respuesta
+      console.log("Respuesta de imagen IA:", response.imageAnalysis);
+      setSelectedImageFile(null);
+      setImagePreview(null);
+      setIsLoading(false);
+
+      await Swal.fire({
+        icon: "success",
+        title: "¡Éxito!",
+        text: "Imagen analizada y diagrama actualizado correctamente",
+        confirmButtonColor: "#00d4ff",
+        background: "#1a1a2e",
+        color: "#fff",
+        timer: 3000,
+        showConfirmButton: true,
+      });
+    } catch (error) {
+      setIsLoading(false);
+      console.error("Error al enviar imagen:", error);
+
+      await Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: `Error al enviar imagen: ${error.message}`,
+        confirmButtonColor: "#f72585",
+        background: "#1a1a2e",
+        color: "#fff",
+      });
+    }
+  };
+
+  const startListening = () => {
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      alert("Tu navegador no soporta reconocimiento de voz");
+      return;
+    }
+
+    if (!recognitionRef.current) {
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = false;
+      recognitionRef.current.lang = "es-ES";
+
+      recognitionRef.current.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        setIaQuestion((prev) => (prev ? prev + " " + transcript : transcript));
+        setIsListening(false);
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsListening(false);
+      };
+    }
+
+    try {
+      recognitionRef.current.start();
+      setIsListening(true);
+    } catch (error) {
+      console.error("Error al iniciar reconocimiento:", error);
+      setIsListening(false);
+    }
+  };
+
+  const stopListening = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+    setIsListening(false);
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedImageFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => setImagePreview(e.target.result);
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
     <div className="room">
+      {isLoading && <Loading message={loadingMessage} />}
+
       <div className="panel-izq">
         <div ref={paletteRef} className="paleta" id="paleta"></div>
         <div className="area-trabajo">
           <button className="btn-json" id="export-json" onClick={exportToJson}>
             Exportar Json
+          </button>
+          <button className="btn-json" onClick={() => setShowJsonModal(true)}>
+            Cargar Json
           </button>
           <div className="link">
             <label>Tipo de Relación:</label>
@@ -861,11 +1247,131 @@ const Room = () => {
             Guardar Diagrama
           </button>
           <button className="rec-link" onClick={() => handleGuardarDiagrama()}>
-            Generar Sprint Boot
+            Generar Spring Boot
+          </button>
+          <button className="rec-link" onClick={handleGenerarFlutter}>
+            Generar Flutter
           </button>
         </div>
       </div>
       <div ref={diagramRef} className="diagrama" id="diagrama"></div>
+
+      {/* Modal para cargar JSON */}
+      {showJsonModal && (
+        <div className="modal-overlay" onClick={() => setShowJsonModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2>Cargar Diagrama desde JSON</h2>
+            <textarea
+              className="json-textarea"
+              placeholder="Pega tu JSON aquí..."
+              value={jsonInput}
+              onChange={(e) => setJsonInput(e.target.value)}
+              rows={15}
+            />
+            <div className="modal-buttons">
+              <button className="btn-cargar" onClick={handleLoadFromJson}>
+                Cargar
+              </button>
+              <button
+                className="btn-cancelar"
+                onClick={() => {
+                  setShowJsonModal(false);
+                  setJsonInput("");
+                }}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Botón flotante para IA */}
+      <button
+        className="floating-ai-btn"
+        onClick={() => setShowIAPanel(!showIAPanel)}
+        aria-label="Abrir panel de IA"
+      >
+        AI
+      </button>
+
+      {/* Panel lateral de IA */}
+      {showIAPanel && (
+        <div className="ia-panel-overlay" onClick={() => setShowIAPanel(false)}>
+          <div className="ia-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="ia-panel-header">
+              <h3>Asistente IA</h3>
+              <button
+                className="close-btn"
+                onClick={() => setShowIAPanel(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="ia-panel-body">
+              {/* Sección de texto/voz */}
+              <div className="ia-section">
+                <label>Pregunta (Texto/Voz):</label>
+                <textarea
+                  value={iaQuestion}
+                  onChange={(e) => setIaQuestion(e.target.value)}
+                  placeholder="Escribe tu pregunta aquí..."
+                  rows={4}
+                  className="ia-textarea"
+                />
+                <div className="ia-buttons">
+                  <button
+                    onClick={handleAskQuestion}
+                    className="ia-btn primary"
+                  >
+                    Enviar Pregunta
+                  </button>
+                  <button
+                    onClick={isListening ? stopListening : startListening}
+                    className={`ia-btn ${
+                      isListening ? "listening" : "secondary"
+                    }`}
+                  >
+                    {isListening ? "Detener" : "Hablar"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Sección de imagen */}
+              <div className="ia-section">
+                <label>Subir Imagen:</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="ia-file-input"
+                />
+                {imagePreview && (
+                  <div className="image-preview">
+                    <img src={imagePreview} alt="Preview" />
+                  </div>
+                )}
+                <button
+                  onClick={handleUploadImage}
+                  className="ia-btn primary"
+                  disabled={!selectedImageFile}
+                >
+                  Enviar Imagen
+                </button>
+              </div>
+
+              {/* Sección de respuesta */}
+              {iaResponse && (
+                <div className="ia-section">
+                  <label>Respuesta:</label>
+                  <pre className="ia-response">{iaResponse}</pre>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
