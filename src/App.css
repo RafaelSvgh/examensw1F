@@ -5,3 +5,18 @@
     height: 100vh;
     background-color: #4a487f;
   }
+
+  /* Responsive App */
+  @media (max-width: 768px) {
+    .App {
+      padding: 10px;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .App {
+      padding: 5px;
+    }
+  }

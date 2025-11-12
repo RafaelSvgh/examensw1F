@@ -332,3 +332,22 @@
 .register-link p a:hover {
     color: #5a67d8;
 }
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container-principal {
+        padding: 15px;
+    }
+    
+    .container-principal::before,
+    .container-principal::after {
+        display: none; /* Ocultar elementos flotantes en móvil */
+    }
+}
+
+@media (max-width: 480px) {
+    .container-principal {
+        padding: 10px;
+        min-height: 100vh;
+    }
+}

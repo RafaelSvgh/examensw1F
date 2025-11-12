@@ -1,16 +1,29 @@
-import React, { useEffect, useRef, useState, useMemo } from "react";
+import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import * as go from "gojs";
 import socket from "../../services/socket";
 import "./Room.css";
 import {
-  actualizarSala,
   downloadZip,
   downloadFlutterProject,
+  updateDiagram,
 } from "../../services/sala";
-import { askQuestion, uploadImage, fixMultiplicity } from "../../services/ia";
+import { askQuestion, uploadImage, fixMultiplicity, validateDiagram } from "../../services/ia";
 import Swal from "sweetalert2";
 import Loading from "../../components/Loading";
+import {
+  FaDownload,
+  FaUpload,
+  FaSave,
+  FaLeaf,
+  FaMobile,
+  FaCheckCircle,
+  FaCode,
+  FaHome,
+  FaKey,
+  FaUser,
+  FaCopy
+} from "react-icons/fa";
 
 const { v4: uuid } = require("uuid");
 
@@ -35,7 +48,10 @@ const Room = () => {
   const [imagePreview, setImagePreview] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("Procesando...");
+  const [autoGuardado, setAutoGuardado] = useState(false);
   const recognitionRef = useRef(null);
+  const autoSaveTimeoutRef = useRef(null);
+  const scheduleAutoSaveRef = useRef(null);
 
   // Usar useMemo para estabilizar las referencias de localStorage
   const user = useMemo(() => {
@@ -47,6 +63,13 @@ const Room = () => {
     const salaData = localStorage.getItem("sala");
     return salaData ? JSON.parse(salaData) : null;
   }, []);
+
+  // Verificar si el usuario actual es admin de la sala
+  const isAdmin = useMemo(() => {
+    if (!user || !sala) return false;
+    return user.id === sala.adminId;
+  }, [user, sala]);
+  
   useEffect(() => {
     if (!diagramRef.current || !paletteRef.current) return;
     diagram.current = new go.Diagram("diagrama", {
@@ -313,6 +336,7 @@ const Room = () => {
     });
 
     if (sala?.id) {
+      console.log("Reconectando a sala:", sala.id);
       socket.emit("reconectar-a-sala", sala.id);
     }
     // socket.emit("reconectar-a-sala", sala.id);
@@ -384,6 +408,11 @@ const Room = () => {
           }
         }
       }
+
+      // Trigger autoguardado si está habilitado y no es una actualización por socket
+      if (!isSocketUpdate && scheduleAutoSaveRef.current) {
+        scheduleAutoSaveRef.current();
+      }
     });
 
     // escuchar si un nodo nuevo ingresa al diagrama
@@ -396,6 +425,11 @@ const Room = () => {
             room: roomCode,
             nodo: nodo,
           });
+          
+          // Trigger autoguardado
+          if (scheduleAutoSaveRef.current) {
+            scheduleAutoSaveRef.current();
+          }
         }
       }
     );
@@ -413,6 +447,11 @@ const Room = () => {
             });
           }
         });
+        
+        // Trigger autoguardado
+        if (scheduleAutoSaveRef.current) {
+          scheduleAutoSaveRef.current();
+        }
       }
     });
 
@@ -438,6 +477,11 @@ const Room = () => {
             category: linkData.category,
           },
         });
+        
+        // Trigger autoguardado
+        if (scheduleAutoSaveRef.current) {
+          scheduleAutoSaveRef.current();
+        }
       }
     });
 
@@ -469,6 +513,11 @@ const Room = () => {
             });
           }
         });
+        
+        // Trigger autoguardado
+        if (scheduleAutoSaveRef.current) {
+          scheduleAutoSaveRef.current();
+        }
       }
     });
 
@@ -710,6 +759,12 @@ const Room = () => {
     return () => {
       diagram.current.div = null;
       palette.div = null;
+      
+      // Limpiar timeout de autoguardado
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+      
       socket.off("agregar-nodo");
       socket.off("titulo-actualizado");
       socket.off("atributo-actualizado");
@@ -723,23 +778,6 @@ const Room = () => {
       socket.off("actualizar-multiplicidad");
     };
   }, [roomCode, user, sala]);
-  const handleAddRecursiveLink = () => {
-    if (selectedNode) {
-      diagram.current.startTransaction("addRecursiveLink");
-
-      // Añadir un enlace desde el nodo a sí mismo (recursivo)
-      diagram.current.model.addLinkData({
-        from: selectedNode.key,
-        to: selectedNode.key,
-        category: "recursivo", // O el tipo de relación que prefieras
-      });
-      socket.emit("agregar-enlace-recursivo", {
-        room: roomCode,
-        nodo: selectedNode,
-      });
-      diagram.current.commitTransaction("addRecursiveLink");
-    }
-  };
 
   // Función para manejar el cambio de tipo de relación
   const handleRelationChange = (event) => {
@@ -802,6 +840,72 @@ const Room = () => {
   };
 
   const handleGuardarDiagrama = async () => {
+    // Verificar que el usuario sea admin
+    if (!isAdmin) {
+      await Swal.fire({
+        icon: "warning",
+        title: "Acceso Denegado",
+        text: "Solo el admin de la sala puede guardar el diagrama",
+        confirmButtonColor: "#7b2ff7",
+        background: "#1a1a2e",
+        color: "#fff",
+      });
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("authToken");
+
+      if (!token) {
+        await Swal.fire({
+          icon: "error",
+          title: "Sin autenticación",
+          text: "Por favor, inicia sesión nuevamente",
+          confirmButtonColor: "#7b2ff7",
+          background: "#1a1a2e",
+          color: "#fff",
+        });
+        return;
+      }
+
+      // Obtener el JSON plano del modelo GoJS
+      const gojsJsonString = diagram.current.model.toJson();
+      const gojsObject = JSON.parse(gojsJsonString);
+
+      // Obtener el roomCode de los params
+      const currentRoomId = roomCode; // roomCode viene de useParams
+
+      console.log("Guardando diagrama en la base de datos...");
+      console.log(selectedNode);
+      const response = await updateDiagram(token, currentRoomId, gojsObject);
+
+      await Swal.fire({
+        icon: "success",
+        title: "¡Guardado!",
+        text: "Diagrama guardado correctamente en la base de datos",
+        confirmButtonColor: "#00d4ff",
+        background: "#1a1a2e",
+        color: "#fff",
+        timer: 2000,
+        showConfirmButton: true,
+      });
+
+      console.log("Diagrama guardado exitosamente:", response);
+    } catch (error) {
+      console.error("Error al guardar el diagrama:", error);
+      
+      await Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: `Error al guardar el diagrama: ${error.message}`,
+        confirmButtonColor: "#f72585",
+        background: "#1a1a2e",
+        color: "#fff",
+      });
+    }
+  };
+
+  const handleGenerateSpringBootProject = async () => {
     try {
       const token = localStorage.getItem("authToken");
 
@@ -1165,6 +1269,153 @@ const Room = () => {
     }
   };
 
+  const autoGuardarDiagrama = useCallback(async () => {
+    // Solo admin puede usar autoguardado
+    if (!autoGuardado || !isAdmin) return;
+    
+    try {
+      const token = localStorage.getItem("authToken");
+      if (!token) return;
+
+      const gojsJsonString = diagram.current.model.toJson();
+      const gojsObject = JSON.parse(gojsJsonString);
+      const currentRoomId = roomCode;
+
+      console.log("Autoguardado silencioso (Admin)...");
+      await updateDiagram(token, currentRoomId, gojsObject);
+      console.log("Autoguardado completado por admin");
+    } catch (error) {
+      console.error("Error en autoguardado:", error);
+    }
+  }, [autoGuardado, isAdmin, roomCode]);
+
+  const scheduleAutoSave = useCallback(() => {
+    // Solo admin puede programar autoguardado
+    if (!autoGuardado || !isAdmin) return;
+    
+    // Limpiar timeout anterior si existe
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+    
+    // Programar autoguardado en 2 segundos después del último cambio
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      autoGuardarDiagrama();
+    }, 2000);
+  }, [autoGuardado, isAdmin, autoGuardarDiagrama]);
+
+  // Mantener referencia actualizada para el listener
+  scheduleAutoSaveRef.current = scheduleAutoSave;
+
+  const handleValidateDiagram = async () => {
+    try {
+      const token = localStorage.getItem("authToken");
+
+      if (!token) {
+        await Swal.fire({
+          icon: "error",
+          title: "Sin autenticación",
+          text: "Por favor, inicia sesión nuevamente",
+          confirmButtonColor: "#7b2ff7",
+          background: "#1a1a2e",
+          color: "#fff",
+        });
+        return;
+      }
+
+      setIsLoading(true);
+      setLoadingMessage("Verificando diagrama...");
+
+      // Obtener el JSON plano del modelo GoJS
+      const gojsJsonString = diagram.current.model.toJson();
+      const gojsObject = JSON.parse(gojsJsonString);
+
+      console.log("Enviando diagrama para validación...");
+      const response = await validateDiagram(token, gojsObject);
+
+      setIsLoading(false);
+
+      if (response.perfect === "yes") {
+        // Diagrama perfecto
+        await Swal.fire({
+          icon: "success",
+          title: "¡Diagrama Perfecto!",
+          text: "Tu diagrama está correctamente validado y no necesita correcciones",
+          confirmButtonColor: "#00d4ff",
+          background: "#1a1a2e",
+          color: "#fff",
+          timer: 4000,
+          showConfirmButton: true,
+        });
+      } else {
+        // Diagrama necesita correcciones
+        const result = await Swal.fire({
+          icon: "warning",
+          title: "Diagrama con Errores",
+          text: "Se encontraron errores en tu diagrama. ¿Quieres aplicar las correcciones automáticas?",
+          showCancelButton: true,
+          confirmButtonText: "Sí, corregir",
+          cancelButtonText: "No, mantener actual",
+          confirmButtonColor: "#00d4ff",
+          cancelButtonColor: "#6c757d",
+          background: "#1a1a2e",
+          color: "#fff",
+        });
+
+        if (result.isConfirmed) {
+          // Usuario quiere aplicar las correcciones
+          try {
+            const correctedDiagram = JSON.parse(response.diagram);
+            
+            if (diagram.current) {
+              diagram.current.model = go.Model.fromJson(correctedDiagram);
+
+              // Emitir el diagrama corregido a todos los conectados
+              const correctedJson = diagram.current.model.toJson();
+              socket.emit("recargar-todo", { room: roomCode, diagrama: correctedJson });
+
+              await Swal.fire({
+                icon: "success",
+                title: "¡Diagrama Corregido!",
+                text: "Las correcciones se han aplicado exitosamente",
+                confirmButtonColor: "#00d4ff",
+                background: "#1a1a2e",
+                color: "#fff",
+                timer: 3000,
+                showConfirmButton: true,
+              });
+            }
+          } catch (parseError) {
+            console.error("Error al parsear diagrama corregido:", parseError);
+            await Swal.fire({
+              icon: "error",
+              title: "Error",
+              text: "No se pudieron aplicar las correcciones automáticas",
+              confirmButtonColor: "#f72585",
+              background: "#1a1a2e",
+              color: "#fff",
+            });
+          }
+        }
+        // Si result.isConfirmed es false, no hacemos nada (se cierra el modal)
+      }
+
+      console.log("Validación completada:", response);
+    } catch (error) {
+      setIsLoading(false);
+      console.error("Error al validar diagrama:", error);
+      
+      await Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: `Error al validar el diagrama: ${error.message}`,
+        confirmButtonColor: "#f72585",
+        background: "#1a1a2e",
+        color: "#fff",
+      });
+    }
+  };
+
   const startListening = () => {
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1217,44 +1468,127 @@ const Room = () => {
     }
   };
 
+  const handleCopyRoomCode = async () => {
+    try {
+      // eslint-disable-next-line
+      const codeRoom = sala?.id || codeRoom;
+      await navigator.clipboard.writeText(codeRoom);
+      
+      Swal.fire({
+        icon: "success",
+        title: "¡Código copiado!",
+        text: `El código "${codeRoom}" ha sido copiado al portapapeles`,
+        timer: 2000,
+        showConfirmButton: false,
+        toast: true,
+        position: 'top-end',
+        confirmButtonColor: "#00d4ff",
+      });
+    } catch (error) {
+      console.error('Error al copiar el código:', error);
+      
+      Swal.fire({
+        icon: "error",
+        title: "Error al copiar",
+        text: "No se pudo copiar el código al portapapeles",
+        confirmButtonColor: "#f72585",
+      });
+    }
+  };
+
   return (
     <div className="room">
       {isLoading && <Loading message={loadingMessage} />}
+      
+      {/* Header con información de la sala */}
+      {sala && (
+        <div className="room-header">
+          <div className="header-content">
+            <div className="header-left">
+              <FaHome className="header-icon" />
+              <h2 className="room-name">{sala.name || 'Sala sin nombre'}</h2>
+            </div>
+            <div className="header-right">
+              <div className="room-code">
+                <FaKey className="meta-icon" />
+                <span>Código: {sala.id || roomCode}</span>
+                <button 
+                  className="copy-btn" 
+                  onClick={handleCopyRoomCode}
+                  title="Copiar código"
+                >
+                  <FaCopy />
+                </button>
+              </div>
+              {sala.admin && (
+                <div className="room-admin">
+                  <FaUser className="meta-icon" />
+                  <span>Admin: {sala.admin.name || 'Sin nombre'}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
-      <div className="panel-izq">
-        <div ref={paletteRef} className="paleta" id="paleta"></div>
-        <div className="area-trabajo">
+      <div className="room-body">
+        <div className="panel-izq">
+          <div ref={paletteRef} className="paleta" id="paleta"></div>
+          
+          <div className="area-trabajo">
           <button className="btn-json" id="export-json" onClick={exportToJson}>
-            Exportar Json
+            <FaDownload className="btn-icon" />
+            Exportar JSON
           </button>
           <button className="btn-json" onClick={() => setShowJsonModal(true)}>
-            Cargar Json
+            <FaUpload className="btn-icon" />
+            Cargar JSON
           </button>
           <div className="link">
-            <label>Tipo de Relación:</label>
+            <label>Tipo de relación:</label>
             <select value={selectedLinkType} onChange={handleRelationChange}>
-              <option value="generalizacion">Generalizacion</option>
+              <option value="generalizacion">Generalización</option>
               <option value="composicion">Composición</option>
               <option value="agregacion">Agregación</option>
-              <option value="asociacion">Asociacion</option>
+              <option value="asociacion">Asociación</option>
               <option value="muchos-a-muchos">Muchos a muchos</option>
             </select>
           </div>
-          <button className="rec-link" onClick={handleAddRecursiveLink}>
-            Enlace Recursivo
+          <button className="atri" onClick={handleGuardarDiagrama}>
+            <FaSave className="btn-icon" />
+            {isAdmin ? "Guardar diagrama" : "Guardar diagrama (Solo admin)"}
           </button>
-          <button className="atri" onClick={() => handleGuardarDiagrama()}>
-            Guardar Diagrama
-          </button>
-          <button className="rec-link" onClick={() => handleGuardarDiagrama()}>
+          <button className="rec-link" onClick={() => handleGenerateSpringBootProject()}>
+            <FaLeaf className="btn-icon" />
             Generar Spring Boot
           </button>
           <button className="rec-link" onClick={handleGenerarFlutter}>
+            <FaMobile className="btn-icon" />
             Generar Flutter
           </button>
+          <button className="rec-link" onClick={handleValidateDiagram}>
+            <FaCheckCircle className="btn-icon" />
+            Verificar diagrama
+          </button>
+          
+          {/* Switch de autoguardado - Solo para admin */}
+          {isAdmin && (
+            <div className="auto-save-container">
+              <label className="auto-save-label">
+                <input
+                  type="checkbox"
+                  checked={autoGuardado}
+                  onChange={(e) => setAutoGuardado(e.target.checked)}
+                  className="auto-save-checkbox"
+                />
+                <span className="auto-save-text">Autoguardado (Admin)</span>
+              </label>
+            </div>
+          )}
         </div>
       </div>
       <div ref={diagramRef} className="diagrama" id="diagrama"></div>
+      </div>
 
       {/* Modal para cargar JSON */}
       {showJsonModal && (
@@ -1270,6 +1604,7 @@ const Room = () => {
             />
             <div className="modal-buttons">
               <button className="btn-cargar" onClick={handleLoadFromJson}>
+                <FaUpload className="btn-icon" />
                 Cargar
               </button>
               <button
@@ -1279,6 +1614,7 @@ const Room = () => {
                   setJsonInput("");
                 }}
               >
+                <FaCode className="btn-icon" />
                 Cancelar
               </button>
             </div>

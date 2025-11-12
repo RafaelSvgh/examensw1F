@@ -86,3 +86,27 @@ export const fixMultiplicity = async (token, gojsDiagram) => {
     throw error;
   }
 };
+
+export const validateDiagram = async (token, gojsDiagram) => {
+  try {
+    const response = await fetch(`${API_URL}ai/validate-diagram`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ gojsDiagram }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.message || `Error en la petición: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error en validateDiagram:", error);
+    throw error;
+  }
+};

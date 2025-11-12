@@ -1,9 +1,95 @@
 /* Estilos generales de la sala */
 .room {
   display: flex;
+  flex-direction: column;
   height: 100vh;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Header de la sala */
+.room-header {
+  background: rgba(44, 62, 80, 0.95);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 10px 25px;
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-icon {
+  font-size: 20px;
+  color: #4fd1c7;
+}
+
+.room-name {
+  color: white;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.room-code, .room-admin {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #a0a9c0;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.copy-btn {
+  background: rgba(79, 209, 199, 0.2);
+  border: 1px solid rgba(79, 209, 199, 0.4);
+  color: #4fd1c7;
+  padding: 3px 5px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 11px;
+  margin-left: 6px;
+}
+
+.copy-btn:hover {
+  background: rgba(79, 209, 199, 0.3);
+  border-color: rgba(79, 209, 199, 0.6);
+  transform: scale(1.1);
+}
+
+.meta-icon {
+  font-size: 12px;
+  color: #4fd1c7;
+}
+
+/* Contenedor del cuerpo de la room */
+.room-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
 }
 
 /* Panel lateral izquierdo */
@@ -97,10 +183,26 @@
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-  text-transform: uppercase;
+  text-transform: none;
   letter-spacing: 0.5px;
   position: relative;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* Estilos para los íconos de los botones */
+.btn-icon {
+  font-size: 16px;
+  transition: transform 0.3s ease;
+}
+
+.btn-json:hover .btn-icon, 
+.rec-link:hover .btn-icon, 
+.atri:hover .btn-icon {
+  transform: scale(1.1);
 }
 
 .btn-json:hover, .rec-link:hover, .atri:hover {
@@ -216,35 +318,177 @@
   .panel-izq {
     width: 280px;
   }
+  
+  .room-header {
+    padding: 8px 20px;
+  }
+  
+  .header-content {
+    padding: 0 10px;
+  }
 }
 
 @media (max-width: 768px) {
-  .room {
+  .room-header {
+    padding: 6px 15px;
+  }
+  
+  .header-content {
+    flex-direction: column;
+    gap: 8px;
+    padding: 0;
+  }
+  
+  .header-left, .header-right {
+    justify-content: center;
+    width: 100%;
+  }
+  
+  .room-name {
+    font-size: 16px;
+  }
+  
+  .room-code, .room-admin {
+    font-size: 12px;
+    padding: 4px 8px;
+  }
+  
+  .copy-btn {
+    padding: 2px 4px;
+    font-size: 10px;
+  }
+  
+  .room-body {
     flex-direction: column;
   }
   
   .panel-izq {
     width: 100%;
-    height: 300px;
-    flex-direction: row;
+    height: auto;
+    min-height: 180px;
+    max-height: 35vh;
+    flex-direction: column;
+    order: 1; /* Panel arriba */
   }
   
   .paleta {
-    height: 100%;
-    width: 40%;
+    height: 100px;
+    width: calc(100% - 20px);
     margin: 10px;
   }
   
   .area-trabajo {
-    width: 60%;
+    width: calc(100% - 20px);
     margin: 10px;
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: flex-start;
+    height: auto;
+    max-height: 20vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
   }
   
   .diagrama {
     border-radius: 0;
+    order: 2; /* Diagrama al final */
+    min-height: 45vh;
+    flex: 1;
+  }
+  
+  /* Contenedor para botones en filas */
+  .area-trabajo {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 10px;
+  }
+  
+  /* Botones más compactos en móvil */
+  .btn-json, .rec-link, .atri {
+    padding: 8px 12px;
+    font-size: 11px;
+    margin: 0;
+    width: 100%;
+    min-width: auto;
+    text-align: center;
+  }
+  
+  /* IA buttons responsive */
+  .ia-btn {
+    padding: 8px 12px;
+    font-size: 11px;
+    margin: 0;
+    width: 100%;
+  }
+  
+  /* Elementos que ocupan toda la fila */
+  .area-trabajo select,
+  .area-trabajo .autoguardado-container {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 480px) {
+  .room-header {
+    padding: 5px 10px;
+  }
+  
+  .header-content {
+    gap: 5px;
+  }
+  
+  .room-name {
+    font-size: 14px;
+  }
+  
+  .header-icon {
+    font-size: 16px;
+  }
+  
+  .room-code, .room-admin {
+    font-size: 11px;
+    padding: 3px 6px;
+    gap: 4px;
+  }
+  
+  .copy-btn {
+    padding: 2px 3px;
+    font-size: 9px;
+    margin-left: 4px;
+  }
+  
+  .panel-izq {
+    min-height: 160px;
+    max-height: 30vh;
+  }
+  
+  .paleta {
+    height: 80px;
+    margin: 8px;
+  }
+  
+  .area-trabajo {
+    margin: 8px;
+    max-height: 18vh;
+    padding: 8px;
+    gap: 6px;
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .diagrama {
+    min-height: 52vh;
+  }
+  
+  .btn-json, .rec-link, .atri {
+    padding: 6px 8px;
+    font-size: 10px;
+    margin: 0;
+  }
+  
+  .ia-btn {
+    padding: 6px 8px;
+    font-size: 10px;
+    margin: 0;
   }
 }
 
@@ -395,8 +639,12 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  text-transform: uppercase;
+  text-transform: none;
   letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .btn-cargar {
@@ -427,6 +675,11 @@
 
 .btn-cancelar:active {
   transform: translateY(0);
+}
+
+.btn-cargar:hover .btn-icon,
+.btn-cancelar:hover .btn-icon {
+  transform: scale(1.1);
 }
 
 /* Estilos del botón flotante de IA */
@@ -663,10 +916,12 @@
   font-family: 'Courier New', monospace;
 }
 
-/* Responsive */
+/* Responsive IA Panel */
 @media (max-width: 768px) {
   .ia-panel {
     width: 100vw;
+    height: 70vh;
+    border-radius: 15px 15px 0 0;
   }
   
   .floating-ai-btn {
@@ -675,6 +930,23 @@
     width: 50px;
     height: 50px;
     font-size: 16px;
+    z-index: 1000;
+  }
+}
+
+@media (max-width: 480px) {
+  .ia-panel {
+    width: 100vw;
+    height: 75vh;
+    border-radius: 10px 10px 0 0;
+  }
+  
+  .floating-ai-btn {
+    bottom: 12px;
+    left: 12px;
+    width: 45px;
+    height: 45px;
+    font-size: 14px;
   }
 }
 
@@ -762,4 +1034,117 @@
 
 .ia-response::-webkit-scrollbar-thumb:hover {
   background: #555;
+}
+
+/* Estilos para el switch de autoguardado */
+.auto-save-container {
+  margin-top: 15px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.auto-save-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.auto-save-checkbox {
+  appearance: none;
+  width: 50px;
+  height: 25px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 25px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-right: 10px;
+}
+
+.auto-save-checkbox::before {
+  content: '';
+  position: absolute;
+  width: 21px;
+  height: 21px;
+  border-radius: 50%;
+  top: 2px;
+  left: 2px;
+  background: white;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.auto-save-checkbox:checked {
+  background: linear-gradient(135deg, #00d4ff 0%, #7b2ff7 100%);
+}
+
+.auto-save-checkbox:checked::before {
+  transform: translateX(25px);
+}
+
+.auto-save-text {
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.auto-save-label:hover .auto-save-checkbox {
+  box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+}
+
+/* Mejoras adicionales para móvil */
+@media (max-width: 768px) {
+  /* Asegurar que los selects se vean bien */
+  .area-trabajo select {
+    padding: 8px 12px;
+    font-size: 12px;
+    border-radius: 6px;
+    margin: 5px 0;
+  }
+  
+  /* Contenedor de autoguardado más compacto */
+  .autoguardado-container {
+    padding: 8px;
+    margin: 5px 0;
+  }
+  
+  .auto-save-label {
+    font-size: 12px;
+  }
+  
+  /* Mejorar espaciado en grid */
+  .area-trabajo {
+    align-items: stretch;
+  }
+  
+  /* Asegurar que todos los botones tengan la misma altura */
+  .btn-json, .rec-link, .atri, .ia-btn {
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .area-trabajo select {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+  
+  .autoguardado-container {
+    padding: 6px;
+  }
+  
+  .auto-save-label {
+    font-size: 11px;
+  }
+  
+  .btn-json, .rec-link, .atri, .ia-btn {
+    height: 35px;
+  }
 }

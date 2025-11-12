@@ -6,8 +6,8 @@ import {
   agregarColaborador,
   buscarSala,
   crearSala,
+  obtenerDiagramas,
 } from "../services/sala";
-import { actualizarRol } from "../services/user";
 import {
   FaPlus,
   FaUsers,
@@ -15,7 +15,10 @@ import {
   FaUser,
   FaCode,
   FaChartLine,
+  FaCalendarAlt,
+  FaExternalLinkAlt,
 } from "react-icons/fa";
+import Loading from "./Loading";
 import {
   getUserData,
   getUserId,
@@ -26,10 +29,12 @@ import {
 
 function DivInicio() {
   const navigate = useNavigate();
-  const [diagramas] = useState([]);
+  const [diagramas, setDiagramas] = useState([]);
   const [error, setError] = useState("");
+  const [errorDiagramas, setErrorDiagramas] = useState("");
   const [userData, setUserData] = useState(getUserData());
   const [socketConnected, setSocketConnected] = useState(socket.connected);
+  const [loadingDiagramas, setLoadingDiagramas] = useState(true);
 
   // Estados para los modales
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -45,13 +50,31 @@ function DivInicio() {
     setUserData(userInfo);
 
     const fetchDiagramas = async () => {
-      
-      // try {
-      //   const diagramasObtenidos = await obtenerDiagramas(userId, token);
-      //   setDiagramas(diagramasObtenidos);
-      // } catch (error) {
-      //   setError(error.message);
-      // }
+      try {
+        setLoadingDiagramas(true);
+        setErrorDiagramas("");
+        const userId = getUserId();
+        const token = getAuthToken();
+        
+        if (!userId || !token) {
+          setErrorDiagramas("No se encontró información de sesión. Inicia sesión nuevamente.");
+          return;
+        }
+
+        const diagramasObtenidos = await obtenerDiagramas(userId, token);
+        setDiagramas(diagramasObtenidos || []);
+      } catch (error) {
+        console.error("Error al cargar diagramas:", error);
+        if (error.message.includes("401") || error.message.includes("token")) {
+          setErrorDiagramas("Tu sesión ha expirado. Inicia sesión nuevamente.");
+        } else if (error.message.includes("network") || error.message.includes("fetch")) {
+          setErrorDiagramas("Error de conexión. Verifica tu internet e intenta nuevamente.");
+        } else {
+          setErrorDiagramas("No se pudieron cargar tus diagramas. Intenta recargar la página.");
+        }
+      } finally {
+        setLoadingDiagramas(false);
+      }
     };
 
     fetchDiagramas();
@@ -202,16 +225,14 @@ function DivInicio() {
 
   const cargarDiagrama = async (id) => {
     const token = getAuthToken();
-    const idUser = getUserId();
     try {
       const sala = await buscarSala(id, token);
-      const user = await actualizarRol(token, "admin", idUser);
-      console.log(user);
-      setLocalStorageItem("userData", user);
+      // const user = await actualizarRol(token, "admin", idUser);
+      console.log(sala);
+      // setLocalStorageItem("userData", user);
       setLocalStorageItem("sala", sala);
-      const salaJson = JSON.stringify(sala.diagrama);
       //console.log(JSON.stringify(sala.diagrama));
-      socket.emit("cargar-diagrama", { room: sala.id, diagrama: salaJson });
+      socket.emit("cargar-diagrama", { room: sala.id, diagrama: sala.diagram });
       navigate(`/room/${id}`);
     } catch (error) {
       setError(error.message);
@@ -272,12 +293,43 @@ function DivInicio() {
       </div>
 
       <div className="div-diagramas">
-        {error && (
+        {(error || errorDiagramas) && (
           <div className="error-container">
-            <p>⚠️ {error}</p>
+            <p>⚠️ {errorDiagramas || error}</p>
+            {errorDiagramas && (
+              <button 
+                className="retry-btn" 
+                onClick={() => {
+                  setErrorDiagramas("");
+                  setLoadingDiagramas(true);
+                  const fetchDiagramas = async () => {
+                    try {
+                      const userId = getUserId();
+                      const token = getAuthToken();
+                      if (userId && token) {
+                        const diagramasObtenidos = await obtenerDiagramas(userId, token);
+                        setDiagramas(diagramasObtenidos || []);
+                      }
+                    } catch (error) {
+                      console.error("Error al reintentar cargar diagramas:", error);
+                      setErrorDiagramas("Error al cargar diagramas. Intenta recargar la página.");
+                    } finally {
+                      setLoadingDiagramas(false);
+                    }
+                  };
+                  fetchDiagramas();
+                }}
+              >
+                Reintentar
+              </button>
+            )}
           </div>
         )}
-        {Array.isArray(diagramas) && diagramas.length > 0 ? (
+        {loadingDiagramas ? (
+          <div className="loading-diagramas-container">
+            <Loading message="Cargando tus diagramas..." />
+          </div>
+        ) : Array.isArray(diagramas) && diagramas.length > 0 ? (
           diagramas.map((diagrama, index) => (
             <div
               className="diagramas"
@@ -285,27 +337,60 @@ function DivInicio() {
               style={{ animationDelay: `${index * 0.1}s` }}
             >
               <div className="diagram-header">
-                <FaCode className="diagram-icon" />
+                <div className="diagram-icon-container">
+                  <FaCode className="diagram-icon" />
+                </div>
+                <div className="diagram-status">
+                  <span className="status-indicator active"></span>
+                  Activo
+                </div>
               </div>
-              <div className="tit">{diagrama.nombre}</div>
-              <div className="codigo">ID: {diagrama.id}</div>
+              
+              <div className="diagram-content">
+                <div className="tit">{diagrama.name || 'Diagrama sin nombre'}</div>
+                <div className="diagram-meta">
+                  <div className="codigo">
+                    <FaCode className="meta-icon" />
+                    ID: {diagrama.id}
+                  </div>
+                  {diagrama.createdAt && (
+                    <div className="fecha">
+                      <FaCalendarAlt className="meta-icon" />
+                      {new Date(diagrama.createdAt).toLocaleDateString('es-ES', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric'
+                      })}
+                    </div>
+                  )}
+                  {diagrama.userCount !== undefined && (
+                    <div className="user-count">
+                      <FaUsers className="meta-icon" />
+                      {diagrama.userCount} colaborador{diagrama.userCount !== 1 ? 'es' : ''}
+                    </div>
+                  )}
+                </div>
+              </div>
+              
               <div className="botones">
                 <button
                   onClick={() => cargarDiagrama(diagrama.id)}
-                  className="go-btn"
+                  className="go-btn primary-btn"
+                  title="Abrir diagrama"
                 >
+                  <FaExternalLinkAlt className="btn-icon" />
                   Abrir
                 </button>
               </div>
             </div>
           ))
-        ) : (
+        ) : !loadingDiagramas ? (
           <div className="empty-state">
             <div className="empty-icon">📊</div>
             <h3>No tienes diagramas creados</h3>
             <p>Usa el botón "Crear Sala" de arriba para comenzar a colaborar</p>
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* Modal para Crear Sala */}

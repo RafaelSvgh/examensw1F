@@ -3,7 +3,7 @@ import config from "../config";
 const API_URL = `${config.api.baseUrl}/`;
 
 export const obtenerDiagramas = async (userId, token) => {
-  const response = await fetch(`${API_URL}sala/admin/${userId}`, {
+  const response = await fetch(`${API_URL}room/admin/${userId}`, {
     method: "GET",
     headers: {
       "x-token": token,
@@ -14,7 +14,7 @@ export const obtenerDiagramas = async (userId, token) => {
   }
 
   const data = await response.json();
-  return data.salas;
+  return data.rooms; // Cambiado de data.salas a data.rooms
 };
 
 export const buscarSala = async (id, token) => {
@@ -24,6 +24,7 @@ export const buscarSala = async (id, token) => {
       "x-token": token,
     },
   });
+  // console.log("Respuesta de buscarSala:", response.json());
   if (!response.ok) {
     throw new Error("Error al obtener los diagramas");
   }
@@ -186,6 +187,33 @@ export const downloadFlutterProject = async (token, modelo) => {
     return { success: true, message: "Descarga iniciada correctamente" };
   } catch (error) {
     console.error("Error al descargar el proyecto Flutter:", error);
+    throw error;
+  }
+};
+
+export const updateDiagram = async (token, roomId, diagram) => {
+  try {
+    const response = await fetch(`${API_URL}room/update-diagram`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-token": token,
+      },
+      body: JSON.stringify({ 
+        roomId: roomId, 
+        diagram: diagram 
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Error en la petición: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error al actualizar el diagrama:", error);
     throw error;
   }
 };
